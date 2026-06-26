@@ -1,0 +1,26 @@
+# Exclude dissertation — it has its own git repo
+dissertation/
+
+# Exclude scratch/copy folders
+ecl_weather_covariates_experiment copy/
+
+# Exclude large dataset and model files
+iTransformer_datasets/
+*.ckpt
+*.pt
+*.pth
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+
+# Virtual environments
+venv/
+.venv/
+
+# Large data files (keep CSVs that are outputs of the experiment)
+# electricity_lisbon_weather.csv is 55MB — exclude if too large for GitHub
+ecl_weather_covariates_experiment/outputs/electricity_lisbon_weather.csv
+ecl_weather_covariates_experiment/outputs/lisbon_weather_hourly.csv
