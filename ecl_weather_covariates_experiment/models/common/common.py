@@ -23,7 +23,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 
 EXPERIMENT_ROOT = Path(__file__).resolve().parents[2]
-DATA_PATH = EXPERIMENT_ROOT / "outputs" / "electricity_lisbon_weather.csv"
+DATA_PATH = EXPERIMENT_ROOT / "Data" / "electricity_lisbon_weather.csv"
 OUTPUT_ROOT = EXPERIMENT_ROOT / "outputs"
 RAW_RESULTS_DIR = OUTPUT_ROOT / "raw_metrics"
 FIGURES_DIR = OUTPUT_ROOT / "figures" / "model_diagnostics"

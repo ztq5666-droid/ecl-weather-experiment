@@ -1,0 +1,10 @@
+client_id,horizon,MSE,MAE,RMSE,train_time_sec,inference_time_sec,model,exog_setting,context_rows,uses_future_exog,future_exog_strategy
+313,24,238599428.4298,10778.8315,15446.664,1.73,389.1253,tabpfn_exog_past_weather,past_exog_context_only,1000,False,persistence_from_last_validation_observation
+313,48,205467834.5187,11258.7607,14334.1492,1.73,774.9411,tabpfn_exog_past_weather,past_exog_context_only,1000,False,persistence_from_last_validation_observation
+313,168,1543617882.2251,28164.8058,39288.9028,1.73,2712.6942,tabpfn_exog_past_weather,past_exog_context_only,1000,False,persistence_from_last_validation_observation
+155,24,11653579.1472,2857.8927,3413.7339,0.9,389.7981,tabpfn_exog_past_weather,past_exog_context_only,1000,False,persistence_from_last_validation_observation
+155,48,21237833.1085,3686.9709,4608.4524,0.9,779.9115,tabpfn_exog_past_weather,past_exog_context_only,1000,False,persistence_from_last_validation_observation
+155,168,122892646.5833,7904.1696,11085.6956,0.9,2729.2026,tabpfn_exog_past_weather,past_exog_context_only,1000,False,persistence_from_last_validation_observation
+236,24,13275294.1719,2895.9786,3643.5277,0.87,388.3097,tabpfn_exog_past_weather,past_exog_context_only,1000,False,persistence_from_last_validation_observation
+236,48,12958871.0375,2997.1061,3599.8432,0.87,777.1061,tabpfn_exog_past_weather,past_exog_context_only,1000,False,persistence_from_last_validation_observation
+236,168,19704733.5257,3875.5242,4439.0014,0.87,2718.3815,tabpfn_exog_past_weather,past_exog_context_only,1000,False,persistence_from_last_validation_observation

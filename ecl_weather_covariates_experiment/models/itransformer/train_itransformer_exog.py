@@ -12,6 +12,7 @@ weather/calendar covariates.
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import time
 from pathlib import Path
@@ -25,7 +26,17 @@ MODELS_DIR = SCRIPT_DIR.parent
 if str(MODELS_DIR) not in sys.path:
     sys.path.insert(0, str(MODELS_DIR))
 
+os.environ.setdefault(
+    "MPLCONFIGDIR",
+    str(SCRIPT_DIR.parents[1] / "outputs" / ".matplotlib"),
+)
+import matplotlib  # noqa: E402
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt  # noqa: E402
+
 from common.common import (  # noqa: E402
+    FIGURES_DIR,
     HORIZONS,
     RAW_RESULTS_DIR,
     RANDOM_SEED,
@@ -38,6 +49,8 @@ from common.common import (  # noqa: E402
 
 
 RESULTS_CSV = RAW_RESULTS_DIR / "itransformer_exog_results.csv"
+SAMPLE_FORECAST_PNG = FIGURES_DIR / "itransformer_style_exog_forecast_sample.png"
+ERROR_BY_HORIZON_PNG = FIGURES_DIR / "itransformer_style_exog_error_by_horizon.png"
 SEQ_LEN = 96
 PRED_LEN = 168
 D_MODEL = 128
@@ -65,7 +78,7 @@ def matrix(df: pd.DataFrame, columns: list[str]) -> np.ndarray:
     return df[columns].ffill().bfill().values.astype(np.float32)
 
 
-def evaluate(split, device) -> list[dict]:
+def evaluate(split, device) -> tuple[list[dict], dict[str, np.ndarray | str]]:
     import torch
     import torch.nn as nn
     from torch.utils.data import DataLoader, Dataset
@@ -183,6 +196,7 @@ def evaluate(split, device) -> list[dict]:
     actual_full = test[:PRED_LEN, :n_load]
 
     records = []
+    sample_forecast = {}
     for client_id, client_idx in zip(selected_clients, selected_indices):
         for horizon in HORIZONS:
             actual = actual_full[:horizon, client_idx]
@@ -201,7 +215,71 @@ def evaluate(split, device) -> list[dict]:
                 "n_variables": len(all_columns),
                 "uses_future_exog": False,
             })
-    return records
+
+            if not sample_forecast and horizon == 24:
+                sample_forecast = {
+                    "client_id": client_id,
+                    "actual": actual.copy(),
+                    "pred": pred.copy(),
+                }
+    return records, sample_forecast
+
+
+def _plot_forecast_sample(sample_forecast: dict[str, np.ndarray | str]) -> None:
+    if not sample_forecast:
+        return
+
+    FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+    actual = np.asarray(sample_forecast["actual"], dtype=float)
+    pred = np.asarray(sample_forecast["pred"], dtype=float)
+    client_id = str(sample_forecast["client_id"])
+
+    fig, ax = plt.subplots(figsize=(9, 4))
+    ax.plot(range(1, len(actual) + 1), actual, label="Actual", linewidth=1.5)
+    ax.plot(range(1, len(pred) + 1), pred, linestyle="--", label="Forecast", linewidth=1.5)
+    ax.set_xlabel("Step (hours ahead)")
+    ax.set_ylabel("Electricity load")
+    ax.set_title(f"iTransformer-style exog: 24h forecast sample (client {client_id})")
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(SAMPLE_FORECAST_PNG, dpi=150)
+    plt.close(fig)
+    print(f"Saved {SAMPLE_FORECAST_PNG}")
+
+
+def _plot_error_by_horizon(results: pd.DataFrame) -> None:
+    if results.empty:
+        return
+
+    FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+    summary = results.groupby("horizon")[["RMSE", "MAE"]].mean().reindex(HORIZONS)
+    x = np.arange(len(HORIZONS))
+    width = 0.35
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    rmse_bars = ax.bar(x - width / 2, summary["RMSE"], width, label="RMSE")
+    mae_bars = ax.bar(x + width / 2, summary["MAE"], width, label="MAE")
+    ax.set_xticks(x)
+    ax.set_xticklabels([f"{h}h" for h in HORIZONS])
+    ax.set_xlabel("Forecast horizon")
+    ax.set_ylabel("Error")
+    ax.set_title("iTransformer-style exog: average error by horizon")
+    ax.legend()
+    for bar in list(rmse_bars) + list(mae_bars):
+        height = bar.get_height()
+        if np.isfinite(height):
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                height * 1.01,
+                f"{height:.0f}",
+                ha="center",
+                va="bottom",
+                fontsize=8,
+            )
+    fig.tight_layout()
+    fig.savefig(ERROR_BY_HORIZON_PNG, dpi=150)
+    plt.close(fig)
+    print(f"Saved {ERROR_BY_HORIZON_PNG}")
 
 
 def main() -> None:
@@ -217,9 +295,12 @@ def main() -> None:
         return
 
     device = get_device()
-    records = evaluate(split, device)
-    pd.DataFrame(records).to_csv(RESULTS_CSV, index=False)
+    records, sample_forecast = evaluate(split, device)
+    results = pd.DataFrame(records)
+    results.to_csv(RESULTS_CSV, index=False)
     print(f"Saved results -> {RESULTS_CSV}")
+    _plot_forecast_sample(sample_forecast)
+    _plot_error_by_horizon(results)
 
 
 if __name__ == "__main__":

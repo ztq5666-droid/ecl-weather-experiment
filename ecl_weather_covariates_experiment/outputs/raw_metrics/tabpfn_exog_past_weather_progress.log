@@ -1,0 +1,21 @@
+[2026-06-26 07:37:13] Evaluating client 1/20 (id=313)
+[2026-06-26 07:37:19] Client 313: fit complete in 1.73s
+[2026-06-26 07:43:48] Client 313: horizon 24h RMSE=15446.664
+[2026-06-26 07:56:43] Client 313: horizon 48h RMSE=14334.149
+[2026-06-26 08:41:56] Client 313: horizon 168h RMSE=39288.903
+[2026-06-26 08:41:56] Saved partial results -> /mnt/batch/tasks/shared/LS_root/mounts/clusters/uceit331/code/Users/Tianqi/ecl-weather-experiment/ecl_weather_covariates_experiment/outputs/raw_metrics/tabpfn_exog_past_weather_results.csv (3 rows)
+[2026-06-26 08:41:56] Evaluating client 2/20 (id=155)
+[2026-06-26 08:41:57] Client 155: fit complete in 0.90s
+[2026-06-26 08:48:27] Client 155: horizon 24h RMSE=3413.734
+[2026-06-26 09:01:27] Client 155: horizon 48h RMSE=4608.452
+[2026-06-26 09:46:56] Client 155: horizon 168h RMSE=11085.696
+[2026-06-26 09:46:56] Saved partial results -> /mnt/batch/tasks/shared/LS_root/mounts/clusters/uceit331/code/Users/Tianqi/ecl-weather-experiment/ecl_weather_covariates_experiment/outputs/raw_metrics/tabpfn_exog_past_weather_results.csv (6 rows)
+[2026-06-26 09:46:56] Evaluating client 3/20 (id=236)
+[2026-06-26 09:46:57] Client 236: fit complete in 0.87s
+[2026-06-26 09:53:25] Client 236: horizon 24h RMSE=3643.528
+[2026-06-26 10:06:23] Client 236: horizon 48h RMSE=3599.843
+[2026-06-26 10:51:41] Client 236: horizon 168h RMSE=4439.001
+[2026-06-26 10:51:41] Saved partial results -> /mnt/batch/tasks/shared/LS_root/mounts/clusters/uceit331/code/Users/Tianqi/ecl-weather-experiment/ecl_weather_covariates_experiment/outputs/raw_metrics/tabpfn_exog_past_weather_results.csv (9 rows)
+[2026-06-26 10:51:41] Evaluating client 4/20 (id=167)
+[2026-06-26 10:51:42] Client 167: fit complete in 0.87s
+[2026-06-26 10:58:09] Client 167: horizon 24h RMSE=1349.017

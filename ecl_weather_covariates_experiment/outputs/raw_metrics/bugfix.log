@@ -1,0 +1,75 @@
+================================================================================
+BUG FIX LOG — ECL Weather Covariates Experiment
+================================================================================
+
+[2026-07-01 03:47:05] BUG IDENTIFIED AND FIXED
+
+AFFECTED MODELS
+  - XGBoost  : models/xgboost/train_xgboost_exog_past.py
+  - TabPFN   : models/tabpfn/train_tabpfn_exog_past.py
+
+BUG DESCRIPTION
+  During iterative multi-step inference, both models appended a single
+  `persisted_exog` row (the last validation observation) to `exog_history`
+  at every future step:
+
+      persisted_exog = base_exog_history[-1]       # frozen at val_end
+      for step in range(horizon):
+          ...
+          exog_history.append(persisted_exog.copy())   # same row repeated
+
+  PAST_EXOG_COLUMNS = WEATHER_COLUMNS + CALENDAR_COLUMNS (15 total).
+  Persisting weather (temperature, humidity, etc.) is correct because future
+  weather is unknown. However, persisting CALENDAR features (hour, day_of_week,
+  month, is_weekend, hour_sin/cos, dayofweek_sin/cos, month_sin/cos) is wrong:
+  these are deterministic functions of the timestamp and are fully known in
+  advance.
+
+  Val ended at 2014-05-26 18:00 (hour=18, Monday). With the bug, every future
+  step saw exog_hour_lag1 = 18 regardless of the actual hour being forecast.
+  From step 1 onwards, lag_1 was frozen; from step 24, lag_24 was also frozen.
+  This degraded the models' ability to capture daily and weekly load patterns
+  during inference, and introduced a train-inference inconsistency (training
+  used correct historical calendar lags; inference did not).
+
+FIX APPLIED
+  Replaced the single `persisted_exog` with a split strategy:
+    - Weather columns (indices 0..n_weather-1): persisted from last val row
+    - Calendar columns (indices n_weather..14): actual future values computed
+      from test timestamps and scaled with the fitted exog_scaler
+
+  Key code after fix:
+      n_weather = len(WEATHER_COLUMNS)          # 5
+      test_calendar_raw = split.test[CALENDAR_COLUMNS].values.astype(float)
+      test_calendar_scaled = (
+          (test_calendar_raw - exog_scaler.mean_[n_weather:])
+          / exog_scaler.scale_[n_weather:]
+      )
+      persisted_weather = ..._exog_scaled[-1, :n_weather].copy()
+
+      for step in range(horizon):
+          ...
+          next_exog = np.empty(len(PAST_EXOG_COLUMNS))
+          next_exog[:n_weather] = persisted_weather       # weather: persisted
+          next_exog[n_weather:] = test_calendar_scaled[step]  # calendar: actual
+          exog_history.append(next_exog)
+
+  Metadata field `future_exog_strategy` updated:
+      "persistence_from_last_validation_observation"
+      → "weather_persistence_calendar_actual"
+
+RE-RUN REQUIRED
+  XGBoost results (xgboost_exog_past_weather_results.csv) were produced with
+  the buggy code (20/20 clients complete). Results must be re-run to reflect
+  the fix.
+
+  TabPFN results (tabpfn_exog_past_weather_results.csv) were partial (3/20
+  clients) and also produced with the buggy code. Re-run with --restart flag
+  to discard partial results and start clean.
+
+MODELS NOT AFFECTED
+  - ARIMA     : load-only, no exogenous features
+  - LSTM      : fixed-context single forward pass, no iterative exog needed
+  - iTransformer : fixed-context single forward pass, no iterative exog needed
+
+================================================================================

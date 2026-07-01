@@ -155,6 +155,15 @@ def evaluate_client(client_id: str, split, client_idx: int, total_clients: int) 
     train_exog_scaled = exog_scaler.fit_transform(train_exog)
     val_exog_scaled = exog_scaler.transform(val_exog)
 
+    # Calendar features (hour, day_of_week, etc.) are deterministic and known in advance.
+    # Only weather features (temperature, humidity, etc.) need persistence.
+    n_weather = len(WEATHER_COLUMNS)
+    test_calendar_raw = split.test[CALENDAR_COLUMNS].values.astype(float)
+    test_calendar_scaled = (
+        (test_calendar_raw - exog_scaler.mean_[n_weather:]) / exog_scaler.scale_[n_weather:]
+    )
+    persisted_weather = val_exog_scaled[-1, :n_weather].copy()
+
     train_features = build_feature_frame(
         train_scaled,
         timestamp_index(split.train),
@@ -197,14 +206,13 @@ def evaluate_client(client_id: str, split, client_idx: int, total_clients: int) 
     base_exog_history = [
         row for row in np.vstack([train_exog_scaled, val_exog_scaled])
     ]
-    persisted_exog = base_exog_history[-1]
 
     for horizon in HORIZONS:
         if len(test_vals) < horizon:
             continue
 
-        # Fixed-origin evaluation. Future exogenous values are not observed here;
-        # unknown future weather/calendar values are carried forward by persistence.
+        # Fixed-origin evaluation. Future weather is unknown → persisted from last
+        # validation observation. Future calendar is deterministic → actual values used.
         target_history = base_target_history.copy()
         exog_history = [row.copy() for row in base_exog_history]
         preds_scaled = []
@@ -219,7 +227,10 @@ def evaluate_client(client_id: str, split, client_idx: int, total_clients: int) 
             pred_scaled = float(model.predict(next_row.values.astype(np.float32))[0])
             preds_scaled.append(pred_scaled)
             target_history.append(pred_scaled)
-            exog_history.append(persisted_exog.copy())
+            next_exog = np.empty(len(PAST_EXOG_COLUMNS))
+            next_exog[:n_weather] = persisted_weather
+            next_exog[n_weather:] = test_calendar_scaled[step]
+            exog_history.append(next_exog)
         inference_time = time.time() - t1
 
         forecast = target_scaler.inverse_transform(
@@ -238,7 +249,7 @@ def evaluate_client(client_id: str, split, client_idx: int, total_clients: int) 
             "model": "xgboost_exog_past_weather",
             "exog_setting": "past_exog_context_only",
             "uses_future_exog": False,
-            "future_exog_strategy": "persistence_from_last_validation_observation",
+            "future_exog_strategy": "weather_persistence_calendar_actual",
         })
         print(f"  Horizon {horizon:3d}h -> RMSE={metrics['RMSE']:.3f}")
 
